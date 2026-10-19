@@ -1,0 +1,70 @@
+services:
+  # =========================================================================
+  # RabbitMQ Message Broker with Management Console
+  # =========================================================================
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: telex-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP protocol
+      - "15672:15672" # RabbitMQ Management Web UI
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - telex-net
+
+  # =========================================================================
+  # Prometheus Metrics Scraper
+  # =========================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: telex-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    networks:
+      - telex-net
+
+  # =========================================================================
+  # Telex Resilient Event Streaming Worker
+  # =========================================================================
+  telex-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: telex-worker
+    environment:
+      - PORT=8082
+      - SERVICE_NAME=telex-worker-prod
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672/
+      - QUEUE_NAME=telex.events.incoming
+      - DLQ_EXCHANGE=telex.dlx
+      - DLQ_QUEUE_NAME=telex.events.dlq
+      - NUM_WORKERS=8
+      - QUEUE_CAPACITY=1000
+      - MAX_RETRIES=3
+      - LOG_LEVEL=INFO
+    ports:
+      - "8082:8082"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - telex-net
+    restart: unless-stopped
+
+networks:
+  telex-net:
+    driver: bridge

@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: telex-event-worker
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /healthz
+    envVars:
+      - key: PORT
+        value: 8082
+      - key: SIMULATION_MODE
+        value: "true"
+      - key: NUM_WORKERS
+        value: "8"
+      - key: LOG_LEVEL
+        value: INFO
