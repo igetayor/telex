@@ -4,6 +4,8 @@
 (function () {
   'use strict';
 
+  const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:8082' : '';
+
   // Elements
   const brokerStatus = document.getElementById('brokerStatus');
   const brokerDot = document.getElementById('brokerDot');
@@ -101,7 +103,7 @@
     btnClearDLQ.addEventListener('click', async () => {
       if (!confirm('Are you sure you want to flush the Dead-Letter Queue?')) return;
       try {
-        await fetch('/api/v1/dlq', { method: 'DELETE' });
+        await fetch(`${API_BASE}/api/v1/dlq`, { method: 'DELETE' });
         fetchDLQ();
       } catch (err) {
         console.error('Failed to clear DLQ:', err);
@@ -113,7 +115,7 @@
 
   async function dispatchTestEvent(type, simError, payload, topic = 'telex.events.stream') {
     try {
-      const res = await fetch('/api/v1/events/publish', {
+      const res = await fetch(`${API_BASE}/api/v1/events/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -132,7 +134,7 @@
 
   async function fetchStats() {
     try {
-      const res = await fetch('/api/v1/stats');
+      const res = await fetch(`${API_BASE}/api/v1/stats`);
       if (!res.ok) return;
       const stats = await res.json();
 
@@ -163,7 +165,7 @@
 
   async function fetchRecentEvents() {
     try {
-      const res = await fetch('/api/v1/events/recent?limit=40');
+      const res = await fetch(`${API_BASE}/api/v1/events/recent?limit=40`);
       if (!res.ok) return;
       const data = await res.json();
       if (!data.events || data.events.length === 0) return;
@@ -226,7 +228,7 @@
 
   async function fetchDLQ() {
     try {
-      const res = await fetch('/api/v1/dlq?limit=50');
+      const res = await fetch(`${API_BASE}/api/v1/dlq?limit=50`);
       if (!res.ok) return;
       const data = await res.json();
 
@@ -273,7 +275,7 @@
           btn.disabled = true;
           btn.textContent = 'Replaying...';
           try {
-            await fetch('/api/v1/dlq/replay', {
+            await fetch(`${API_BASE}/api/v1/dlq/replay`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ event_id: id })
